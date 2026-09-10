@@ -89,7 +89,11 @@ code or a new file we own outright — new files do not conflict.
 | `core/integrations/microsoft_defender/descriptor.py` | Same per-instance seam; documents the Graph application permissions | As above. |
 | `core/integrations/microsoft_defender/ingestion.py` | Retargeted from Defender **for Endpoint** (`api.securitycenter.microsoft.com`) to Defender **XDR** via Microsoft Graph (`/security/incidents`, `/security/alerts_v2`, `/security/runHuntingQuery`) | We need XDR; MDE does not serve incidents or advanced hunting. This is the single largest divergence from upstream. |
 | `core/integrations/microsoft_defender/tool.py` | MCP tools retargeted to the same Graph surface: `xdr_get_incidents`, `xdr_get_incident`, `xdr_get_alerts`, `xdr_run_hunting_query`, replacing `mde_get_alerts` / `mde_get_machine` / `mde_isolate` | The MDE device tools cannot work with the application permissions this deployment grants (read-only XDR), so leaving them would hand the agent three tools that always 403. |
+| `clients/web/src/config/integrations.ts` | Sentinel gains `subscription_id`, `resource_group`, `workspace_name`; Defender gains `resource` and is relabelled "Microsoft Defender XDR" | The Settings form is a third registry that has to agree with the descriptor — `tests/unit/_ratchets/test_integration_registries.py` enforces it. Part of the same upstream bug as the descriptor mismatch: the UI never collected the three fields ingestion required. |
+| `core/federation/registry.py` | Five guarded lines in `_ensure_builtins_loaded` calling `register_instance_adapters()` | The per-instance adapters have to be registered wherever the built-ins are, and there is no hook. Wrapped in `try/except` so a tenancy failure cannot stop upstream's own sources loading. |
 | `tests/unit/integrations/test_tool_servers_httpx.py` | `test_defender_isolate_posts_the_isolation_payload` replaced with `test_defender_xdr_lists_incidents_from_graph` | It asserted the MDE isolation call that no longer exists. Everything else in the file is untouched. |
+| `tests/unit/integrations/test_blocking_offload.py` | The Defender case now patches `DefenderXdrClient.list_incidents` | Same reason: it patched an MDE method that no longer exists. The assertion (that the fetch does not block the event loop) is unchanged. |
+| `tests/unit/api/test_router_discovery.py` | Hardcoded deviation count 9 → 11 | The test counts routers that are not `auth=REQUIRED`. Our two new public routers legitimately move the number. Rationale is in the test docstring. |
 | `core/platform/url_safety.py` | `DEFAULT_ALLOWED_PROVIDER_HOSTS` extended from `VIGIL_EXTRA_PROVIDER_HOSTS` | Azure AI Foundry endpoints (`*.services.ai.azure.com`) are not on upstream's allowlist, and `fetch_openai_models` only sends the bearer token to allowlisted hosts — so Foundry model discovery would silently 401. Five lines, additive. |
 | `services/api/main.py` | Two paths appended to `PUBLIC_API_PATHS`; a DEV_MODE startup banner | `PUBLIC_API_PATHS` is a security allowlist upstream deliberately keeps in one file. There is no seam and there should not be one. |
 | `env.example` | `DEV_MODE=false`, plus an Azure/SSO section | Shipping an example that defaults to an auth bypass is not something we want copied into a deployment. |
@@ -117,6 +121,7 @@ tests/unit/tenancy/...
 tests/unit/auth/test_sso_bridge.py
 tests/unit/integrations/test_defender_xdr.py
 tests/unit/platform/test_readiness.py
+tests/security/test_foundry_provider_host.py
 ```
 
 ## Bugs we fixed here that should go upstream
@@ -138,3 +143,10 @@ tests/unit/platform/test_readiness.py
    the poller down — it just stops being silent.
 
 Both are small, self-contained and not Azure-specific. Worth offering back.
+
+3. **The Settings form never collected three of the fields Sentinel needs.**
+   The same mismatch as (1), one registry further out:
+   `clients/web/src/config/integrations.ts` offered only `workspace_id`,
+   `tenant_id`, `client_id`, `client_secret`. Even a maintainer who noticed the
+   descriptor bug could not have configured Sentinel through the UI.
+   *Fix:* the catalog now offers all six.

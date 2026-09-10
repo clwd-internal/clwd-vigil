@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 from dataclasses import dataclass
 from typing import Iterable, Tuple
@@ -10,13 +11,65 @@ from urllib.parse import urlparse, urlunparse
 # Anything not in this set is treated as a custom URL and is only
 # allowed when ``allow_custom=True`` AND none of its resolved IPs are
 # in a blocked range.
-DEFAULT_ALLOWED_PROVIDER_HOSTS = frozenset(
+_BUILTIN_ALLOWED_PROVIDER_HOSTS = frozenset(
     {
         "api.openai.com",
         "api.anthropic.com",
         "generativelanguage.googleapis.com",
     }
 )
+
+
+def _extra_allowed_provider_hosts() -> frozenset:
+    """Deployment-declared additional trusted provider hosts.
+
+    FORK: Azure AI Foundry is reached at
+    ``https://<account>.services.ai.azure.com/openai/v1``, which is a
+    per-account hostname and so cannot be a built-in constant. Without it in
+    the allowlist ``is_allowlisted_host`` is false, ``fetch_openai_models``
+    omits the bearer token, and model discovery fails with a 401 that looks
+    like a bad key rather than a missing allowlist entry.
+
+    Read from the environment, not from the API: the allowlist governs where a
+    configured credential may be sent, so widening it is a deployment decision
+    for whoever controls the container, not a runtime one for anyone with an
+    admin session. ``VIGIL_EXTRA_PROVIDER_HOSTS`` is a comma-separated list of
+    exact hostnames — no wildcards, since ``*.azure.com`` would cover every
+    Azure-hosted endpoint in the world.
+    """
+    raw = (os.environ.get("VIGIL_EXTRA_PROVIDER_HOSTS") or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
+    if not raw:
+        return frozenset()
+    return frozenset(
+        host.strip().lower().rstrip(".")
+        for host in raw.split(",")
+        if host.strip()
+    )
+
+
+class _AllowedProviderHosts(frozenset):
+    """The built-in allowlist, plus anything the deployment declared.
+
+    A frozenset subclass whose membership test also consults the environment,
+    so it can stay a module-level constant that every existing caller uses by
+    default (including as ``validate_provider_url``'s default argument, which
+    is bound once at import) while still picking up configuration set after
+    import — which is what a test that monkeypatches the env expects.
+    """
+
+    def __contains__(self, item: object) -> bool:  # type: ignore[override]
+        if super().__contains__(item):
+            return True
+        return isinstance(item, str) and item in _extra_allowed_provider_hosts()
+
+    def __iter__(self):
+        yield from super().__iter__()
+        for host in _extra_allowed_provider_hosts():
+            if not super().__contains__(host):
+                yield host
+
+
+DEFAULT_ALLOWED_PROVIDER_HOSTS = _AllowedProviderHosts(_BUILTIN_ALLOWED_PROVIDER_HOSTS)
 
 
 class UrlSafetyError(ValueError):

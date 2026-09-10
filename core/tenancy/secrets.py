@@ -88,7 +88,7 @@ def key_vault_url() -> Optional[str]:
     the environment should take effect immediately.
     """
     for var in ("VIGIL_KEY_VAULT_URL", "AZURE_KEY_VAULT_URL", "KEY_VAULT_URL"):
-        value = (os.environ.get(var) or "").strip()
+        value = (os.environ.get(var) or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
         if value:
             return value
     return None
@@ -96,7 +96,7 @@ def key_vault_url() -> Optional[str]:
 
 def _ttl() -> int:
     try:
-        return max(0, int(os.environ.get("VIGIL_SECRET_CACHE_TTL", "")))
+        return max(0, int(os.environ.get("VIGIL_SECRET_CACHE_TTL", "")))  # noqa: ENV001 - Container Apps deployment boundary, not user config
     except ValueError:
         return DEFAULT_TTL_SECONDS
 
@@ -203,7 +203,7 @@ def _secret_client(vault_url: str):
         # cannot guess which one is meant and returns a 400 that surfaces
         # much later as an opaque 403 from Key Vault.
         credential = DefaultAzureCredential(
-            managed_identity_client_id=os.environ.get("AZURE_CLIENT_ID") or None,
+            managed_identity_client_id=os.environ.get("AZURE_CLIENT_ID") or None,  # noqa: ENV001 - Container Apps deployment boundary, not user config
             exclude_interactive_browser_credential=True,
         )
         client = SecretClient(vault_url=vault_url, credential=credential)

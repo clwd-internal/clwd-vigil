@@ -131,7 +131,7 @@ def _coerce(raw: Dict[str, Any], *, source: str) -> Optional[TenantInstance]:
 
 
 def _from_env() -> List[TenantInstance]:
-    raw = (os.environ.get(ENV_VAR) or "").strip()
+    raw = (os.environ.get(ENV_VAR) or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
     if not raw:
         return []
     try:

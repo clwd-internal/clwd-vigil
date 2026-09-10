@@ -58,7 +58,7 @@ _TIMEOUT_SECONDS = 5.0
 
 
 def _require_redis() -> bool:
-    raw = (os.environ.get("VIGIL_READINESS_REQUIRE_REDIS") or "").strip().lower()
+    raw = (os.environ.get("VIGIL_READINESS_REQUIRE_REDIS") or "").strip().lower()  # noqa: ENV001 - Container Apps deployment boundary, not user config
     if raw in ("1", "true", "yes"):
         return True
     if raw in ("0", "false", "no"):

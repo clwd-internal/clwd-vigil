@@ -109,7 +109,7 @@ def sso_enabled() -> bool:
     to an upstream hot file for no benefit, and tests that flip the env var
     should take effect without a reimport.
     """
-    return (os.environ.get("VIGIL_SSO_ENABLED") or "").strip().lower() in (
+    return (os.environ.get("VIGIL_SSO_ENABLED") or "").strip().lower() in (  # noqa: ENV001 - Container Apps deployment boundary, not user config
         "1",
         "true",
         "yes",
@@ -126,11 +126,11 @@ def principal_endpoint() -> str:
     infrastructure to get wrong.
     """
     raw = (
-        os.environ.get("VIGIL_SSO_PRINCIPAL_ENDPOINT") or DEFAULT_PRINCIPAL_ENDPOINT
+        os.environ.get("VIGIL_SSO_PRINCIPAL_ENDPOINT") or DEFAULT_PRINCIPAL_ENDPOINT  # noqa: ENV001 - Container Apps deployment boundary, not user config
     ).strip()
     if raw.startswith("http://") or raw.startswith("https://"):
         return raw
-    base = (os.environ.get("VIGIL_SSO_SIDECAR_BASE") or DEFAULT_SIDECAR_BASE).rstrip("/")
+    base = (os.environ.get("VIGIL_SSO_SIDECAR_BASE") or DEFAULT_SIDECAR_BASE).rstrip("/")  # noqa: ENV001 - Container Apps deployment boundary, not user config
     if not raw.startswith("/"):
         raw = "/" + raw
     return f"{base}{raw}"
@@ -143,8 +143,8 @@ def default_role_id() -> str:
     reading of a configuration gap is "least privilege", not "analyst". Set
     ``VIGIL_SSO_DEFAULT_ROLE=""`` to reject such users outright instead.
     """
-    if "VIGIL_SSO_DEFAULT_ROLE" in os.environ:
-        return (os.environ.get("VIGIL_SSO_DEFAULT_ROLE") or "").strip()
+    if "VIGIL_SSO_DEFAULT_ROLE" in os.environ:  # noqa: ENV001 - Container Apps deployment boundary, not user config
+        return (os.environ.get("VIGIL_SSO_DEFAULT_ROLE") or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
     return "role-viewer"
 
 
@@ -168,7 +168,7 @@ def role_map() -> Dict[str, str]:
         "vigil.viewer": "role-viewer",
         "reader": "role-viewer",
     }
-    raw = (os.environ.get("VIGIL_SSO_ROLE_MAP") or "").strip()
+    raw = (os.environ.get("VIGIL_SSO_ROLE_MAP") or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
     if not raw:
         return defaults
     try:
