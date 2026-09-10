@@ -88,6 +88,8 @@ code or a new file we own outright — new files do not conflict.
 | `core/integrations/azure_sentinel/ingestion.py` | Optional per-instance config injection; missing-SDK `ImportError` now raises instead of returning `[]` | `__init__` had no injection seam. Kept to one defaulted keyword argument so upstream's zero-arg construction still works unchanged. |
 | `core/integrations/microsoft_defender/descriptor.py` | Same per-instance seam; documents the Graph application permissions | As above. |
 | `core/integrations/microsoft_defender/ingestion.py` | Retargeted from Defender **for Endpoint** (`api.securitycenter.microsoft.com`) to Defender **XDR** via Microsoft Graph (`/security/incidents`, `/security/alerts_v2`, `/security/runHuntingQuery`) | We need XDR; MDE does not serve incidents or advanced hunting. This is the single largest divergence from upstream. |
+| `core/integrations/microsoft_defender/tool.py` | MCP tools retargeted to the same Graph surface: `xdr_get_incidents`, `xdr_get_incident`, `xdr_get_alerts`, `xdr_run_hunting_query`, replacing `mde_get_alerts` / `mde_get_machine` / `mde_isolate` | The MDE device tools cannot work with the application permissions this deployment grants (read-only XDR), so leaving them would hand the agent three tools that always 403. |
+| `tests/unit/integrations/test_tool_servers_httpx.py` | `test_defender_isolate_posts_the_isolation_payload` replaced with `test_defender_xdr_lists_incidents_from_graph` | It asserted the MDE isolation call that no longer exists. Everything else in the file is untouched. |
 | `core/platform/url_safety.py` | `DEFAULT_ALLOWED_PROVIDER_HOSTS` extended from `VIGIL_EXTRA_PROVIDER_HOSTS` | Azure AI Foundry endpoints (`*.services.ai.azure.com`) are not on upstream's allowlist, and `fetch_openai_models` only sends the bearer token to allowlisted hosts — so Foundry model discovery would silently 401. Five lines, additive. |
 | `services/api/main.py` | Two paths appended to `PUBLIC_API_PATHS`; a DEV_MODE startup banner | `PUBLIC_API_PATHS` is a security allowlist upstream deliberately keeps in one file. There is no seam and there should not be one. |
 | `env.example` | `DEV_MODE=false`, plus an Azure/SSO section | Shipping an example that defaults to an auth bypass is not something we want copied into a deployment. |
@@ -102,6 +104,7 @@ docs/AZURE.md                               Azure deployment contract
 scripts/fork/add-upstream-remote.sh
 .github/workflows/upstream-sync.yml
 .github/workflows/build-images.yml          fork-only image build, ACR push, dispatch
+core/integrations/microsoft_defender/graph.py   Microsoft Graph security client
 core/tenancy/__init__.py
 core/tenancy/instances.py                   the per-customer instance registry
 core/tenancy/secrets.py                     Key Vault resolution + TTL cache, file fallback
