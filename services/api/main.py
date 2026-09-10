@@ -67,6 +67,15 @@ PUBLIC_API_PATHS: frozenset[str] = frozenset(
         "/api/auth/bootstrap",
         # Health check — used by load balancers and Docker.
         "/api/health",
+        # FORK: container readiness probe. Issued by the Container Apps
+        # platform, which holds no session cookie. Returns reachability
+        # booleans only. See core/platform/readiness_router.py.
+        "/api/health/ready",
+        # FORK: Entra SSO bridge. Authenticated by the Container Apps auth
+        # sidecar rather than by a Vigil cookie — it is the endpoint that
+        # issues the cookie. See core/auth/sso_router.py.
+        "/api/auth/sso/session",
+        "/api/auth/sso/status",
         # VStrike inbound receiver uses its own bearer API-key dependency.
         "/api/integrations/vstrike/findings",
     }
@@ -424,6 +433,22 @@ async def _startup(app: FastAPI):
     logger.info("=" * 60)
     logger.info("Starting Vigil SOC Backend")
     logger.info("=" * 60)
+
+    # FORK: DEV_MODE bypasses authentication entirely and grants every
+    # permission (core/auth/auth_service.py). Settings already defaults it to
+    # False, but env.example shipped DEV_MODE=true, so an operator who copied
+    # it into a deployment would have an open instance and no indication of it
+    # in the logs. Say so at ERROR, on every start, unmissably.
+    if get_settings().dev_mode:
+        for line in (
+            "!" * 60,
+            "DEV_MODE=true — AUTHENTICATION IS DISABLED.",
+            "Every request is treated as a fully-privileged user and every",
+            "permission check returns true. This must never be set in a",
+            "deployment reachable by anyone but you. Unset DEV_MODE to fix.",
+            "!" * 60,
+        ):
+            logger.error(line)
 
     _build_services(app)
 
