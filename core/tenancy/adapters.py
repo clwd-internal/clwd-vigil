@@ -129,9 +129,9 @@ def _build_service(vendor: str, config: Dict[str, Any]):
 def scoped_finding_id(vendor: str, instance_id: str, native_id: str) -> str:
     """Deterministic, collision-resistant, and short enough for String(50)."""
     prefix = VENDORS[vendor].finding_prefix if vendor in VENDORS else vendor
-    digest = hashlib.sha256(
-        f"{instance_id}|{native_id}".encode("utf-8")
-    ).hexdigest()[:_DIGEST_CHARS]
+    digest = hashlib.sha256(f"{instance_id}|{native_id}".encode("utf-8")).hexdigest()[
+        :_DIGEST_CHARS
+    ]
     return f"{prefix}-{digest}"
 
 
@@ -302,7 +302,9 @@ def register_instance_adapters(
     return registered
 
 
-def _factory_for(vendor: str, instance: TenantInstance) -> Callable[[], FederationAdapter]:
+def _factory_for(
+    vendor: str, instance: TenantInstance
+) -> Callable[[], FederationAdapter]:
     def _factory() -> FederationAdapter:
         return build_adapter(vendor, instance)
 

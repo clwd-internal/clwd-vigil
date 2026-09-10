@@ -107,4 +107,3 @@ def _ensure_builtins_loaded() -> None:
         register_instance_adapters()
     except Exception as e:
         logger.warning("Failed to load per-instance federation adapters: %s", e)
-

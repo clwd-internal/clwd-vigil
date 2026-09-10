@@ -37,13 +37,11 @@ def _extra_allowed_provider_hosts() -> frozenset:
     exact hostnames — no wildcards, since ``*.azure.com`` would cover every
     Azure-hosted endpoint in the world.
     """
-    raw = (os.environ.get("VIGIL_EXTRA_PROVIDER_HOSTS") or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
+    raw = (os.environ.get("VIGIL_EXTRA_PROVIDER_HOSTS") or "").strip()  # noqa: ENV001
     if not raw:
         return frozenset()
     return frozenset(
-        host.strip().lower().rstrip(".")
-        for host in raw.split(",")
-        if host.strip()
+        host.strip().lower().rstrip(".") for host in raw.split(",") if host.strip()
     )
 
 

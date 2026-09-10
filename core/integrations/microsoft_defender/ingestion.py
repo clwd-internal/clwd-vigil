@@ -75,7 +75,9 @@ class MicrosoftDefenderIngestion(SIEMIngestionService):
     @property
     def resource(self) -> str:
         raw = str(self.config.get("resource") or RESOURCE_INCIDENTS).strip().lower()
-        return raw if raw in (RESOURCE_INCIDENTS, RESOURCE_ALERTS) else RESOURCE_INCIDENTS
+        return (
+            raw if raw in (RESOURCE_INCIDENTS, RESOURCE_ALERTS) else RESOURCE_INCIDENTS
+        )
 
     # -- fetch ------------------------------------------------------------
 
@@ -112,9 +114,7 @@ class MicrosoftDefenderIngestion(SIEMIngestionService):
             logger.error("%s fetch failed: %s", self.siem_name, e)
             raise
 
-        logger.info(
-            "Fetched %d %s from %s", len(items), self.resource, self.siem_name
-        )
+        logger.info("Fetched %d %s from %s", len(items), self.resource, self.siem_name)
         return items
 
     async def run_hunting_query(
@@ -302,9 +302,10 @@ def _entities_from_alert(alert: Dict[str, Any]) -> Dict[str, List[str]]:
                 account.get("userPrincipalName") or account.get("accountName"),
             )
         elif odata_type == _EVIDENCE_MAILBOX:
-            _add(entities["usernames"], item.get("userAccount", {}).get(
-                "userPrincipalName"
-            ))
+            _add(
+                entities["usernames"],
+                item.get("userAccount", {}).get("userPrincipalName"),
+            )
     return entities
 
 

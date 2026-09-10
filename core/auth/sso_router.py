@@ -98,8 +98,7 @@ def _provision(principal: EntraPrincipal, role_id: str) -> Dict[str, Any]:
         user = (
             session.query(User)
             .filter(
-                (User.email == principal.email)
-                | (User.username == principal.username)
+                (User.email == principal.email) | (User.username == principal.username)
             )
             .first()
         )

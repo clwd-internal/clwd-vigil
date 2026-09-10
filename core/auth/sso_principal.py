@@ -109,12 +109,8 @@ def sso_enabled() -> bool:
     to an upstream hot file for no benefit, and tests that flip the env var
     should take effect without a reimport.
     """
-    return (os.environ.get("VIGIL_SSO_ENABLED") or "").strip().lower() in (  # noqa: ENV001 - Container Apps deployment boundary, not user config
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    raw = os.environ.get("VIGIL_SSO_ENABLED") or ""  # noqa: ENV001
+    return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
 def principal_endpoint() -> str:
@@ -125,12 +121,12 @@ def principal_endpoint() -> str:
     namespace. Requiring a full URL would be one more thing for the
     infrastructure to get wrong.
     """
-    raw = (
-        os.environ.get("VIGIL_SSO_PRINCIPAL_ENDPOINT") or DEFAULT_PRINCIPAL_ENDPOINT  # noqa: ENV001 - Container Apps deployment boundary, not user config
-    ).strip()
+    configured = os.environ.get("VIGIL_SSO_PRINCIPAL_ENDPOINT")  # noqa: ENV001
+    raw = (configured or DEFAULT_PRINCIPAL_ENDPOINT).strip()
     if raw.startswith("http://") or raw.startswith("https://"):
         return raw
-    base = (os.environ.get("VIGIL_SSO_SIDECAR_BASE") or DEFAULT_SIDECAR_BASE).rstrip("/")  # noqa: ENV001 - Container Apps deployment boundary, not user config
+    sidecar = os.environ.get("VIGIL_SSO_SIDECAR_BASE")  # noqa: ENV001
+    base = (sidecar or DEFAULT_SIDECAR_BASE).rstrip("/")
     if not raw.startswith("/"):
         raw = "/" + raw
     return f"{base}{raw}"
@@ -143,8 +139,8 @@ def default_role_id() -> str:
     reading of a configuration gap is "least privilege", not "analyst". Set
     ``VIGIL_SSO_DEFAULT_ROLE=""`` to reject such users outright instead.
     """
-    if "VIGIL_SSO_DEFAULT_ROLE" in os.environ:  # noqa: ENV001 - Container Apps deployment boundary, not user config
-        return (os.environ.get("VIGIL_SSO_DEFAULT_ROLE") or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
+    if "VIGIL_SSO_DEFAULT_ROLE" in os.environ:  # noqa: ENV001
+        return (os.environ.get("VIGIL_SSO_DEFAULT_ROLE") or "").strip()  # noqa: ENV001
     return "role-viewer"
 
 
@@ -168,7 +164,7 @@ def role_map() -> Dict[str, str]:
         "vigil.viewer": "role-viewer",
         "reader": "role-viewer",
     }
-    raw = (os.environ.get("VIGIL_SSO_ROLE_MAP") or "").strip()  # noqa: ENV001 - Container Apps deployment boundary, not user config
+    raw = (os.environ.get("VIGIL_SSO_ROLE_MAP") or "").strip()  # noqa: ENV001
     if not raw:
         return defaults
     try:
@@ -254,9 +250,7 @@ def principal_from_payload(payload: Any) -> EntraPrincipal:
     if not email:
         # /.auth/me puts the IdP's own name for the user here; the header
         # equivalent is userDetails.
-        email = str(
-            payload.get("user_id") or payload.get("userDetails") or ""
-        ).strip()
+        email = str(payload.get("user_id") or payload.get("userDetails") or "").strip()
 
     object_id = _first(claims, _OID_CLAIMS) or str(payload.get("userId") or "").strip()
 
@@ -377,7 +371,9 @@ async def resolve_principal(request_headers: Dict[str, str]) -> EntraPrincipal:
     header_value = lowered.get(PRINCIPAL_HEADER)
     if header_value:
         try:
-            claimed = principal_from_payload(decode_client_principal_header(header_value))
+            claimed = principal_from_payload(
+                decode_client_principal_header(header_value)
+            )
         except SsoError:
             logger.warning("X-MS-CLIENT-PRINCIPAL present but undecodable; ignoring it")
         else:
