@@ -567,27 +567,44 @@ async def test_azure_ad_reports_a_missing_user_without_raising(monkeypatch):
 
 
 @respx.mock
-async def test_defender_isolate_posts_the_isolation_payload(monkeypatch):
+async def test_defender_xdr_lists_incidents_from_graph(monkeypatch):
+    """FORK: the Defender tool server talks to Defender XDR via Microsoft
+    Graph, not Defender for Endpoint. Upstream's equivalent test asserted a
+    POST to api.securitycenter.microsoft.com/api/machines/{id}/isolate; that
+    endpoint is a different product and the Entra app this fork deploys with
+    holds no permission for it. See docs/UPSTREAM.md."""
     _stub_config(
         monkeypatch,
         mde_tool,
         {"tenant_id": "tid", "client_id": "cid", "client_secret": "sec"},
     )
-    respx.post("https://login.microsoftonline.com/tid/oauth2/v2.0/token").mock(
-        return_value=httpx.Response(200, json={"access_token": "at"})
+    monkeypatch.setattr(
+        mde_tool.DefenderXdrClient, "_headers", lambda self: {"Authorization": "Bearer at"}
     )
-    route = respx.post(
-        "https://api.securitycenter.microsoft.com/api/machines/m1/isolate"
-    ).mock(return_value=httpx.Response(201, json={"id": "action-1"}))
-
-    body = _body(
-        await mde_tool.handle_call_tool(
-            "mde_isolate", {"machine_id": "m1", "comment": "ransomware"}
+    route = respx.get("https://graph.microsoft.com/v1.0/security/incidents").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "id": "42",
+                        "displayName": "Multi-stage incident",
+                        "severity": "high",
+                        "status": "active",
+                        "createdDateTime": "2026-01-01T00:00:00Z",
+                        "lastUpdateDateTime": "2026-01-02T00:00:00Z",
+                    }
+                ]
+            },
         )
     )
-    assert body == {"success": True, "machine_id": "m1", "action": "isolated"}
-    payload = json.loads(route.calls.last.request.content)
-    assert payload == {"Comment": "ransomware", "IsolationType": "Full"}
+
+    body = _body(await mde_tool.handle_call_tool("xdr_get_incidents", {"limit": 5}))
+    assert body["count"] == 1
+    assert body["incidents"][0]["id"] == "42"
+    # $expand=alerts is deliberately off for the listing tool: the agent asks
+    # for one incident's alerts with xdr_get_incident when it needs them.
+    assert "expand" not in str(route.calls.last.request.url).lower()
 
 
 @respx.mock

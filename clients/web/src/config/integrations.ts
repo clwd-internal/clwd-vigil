@@ -278,9 +278,9 @@ export const INTEGRATIONS: IntegrationMetadata[] = [
   },
   {
     id: 'microsoft-defender',
-    name: 'Microsoft Defender for Endpoint',
+    name: 'Microsoft Defender XDR',
     category: 'EDR/XDR',
-    description: 'Integrate with Microsoft Defender for Endpoint (MDE) for enterprise endpoint protection.',
+    description: 'Microsoft Defender XDR incidents, alerts and advanced hunting via the Microsoft Graph security API.',
     functionality_type: 'Detection & Response',
     fields: [
       {
@@ -303,8 +303,15 @@ export const INTEGRATIONS: IntegrationMetadata[] = [
         type: 'password',
         required: true,
       },
+      {
+        name: 'resource',
+        label: 'Resource',
+        type: 'text',
+        required: false,
+        placeholder: 'incidents (default) or alerts',
+      },
     ],
-    docs_url: 'https://docs.microsoft.com/en-us/microsoft-365/security/defender-endpoint/api-hello-world',
+    docs_url: 'https://learn.microsoft.com/en-us/graph/api/resources/security-api-overview',
   },
   {
     id: 'cortex-xdr',
@@ -942,6 +949,27 @@ export const INTEGRATIONS: IntegrationMetadata[] = [
         label: 'Client Secret',
         type: 'password',
         required: true,
+      },
+      {
+        name: 'subscription_id',
+        label: 'Subscription ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Azure subscription containing the Sentinel workspace',
+      },
+      {
+        name: 'resource_group',
+        label: 'Resource Group',
+        type: 'text',
+        required: true,
+        placeholder: 'Resource group of the Log Analytics workspace',
+      },
+      {
+        name: 'workspace_name',
+        label: 'Workspace Name',
+        type: 'text',
+        required: true,
+        placeholder: 'Log Analytics workspace name (not its GUID)',
       },
     ],
     docs_url: 'https://docs.microsoft.com/en-us/azure/sentinel/',

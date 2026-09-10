@@ -12,7 +12,6 @@ import asyncio
 import json
 import logging
 
-import httpx
 import mcp.server.stdio
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
@@ -20,6 +19,10 @@ from mcp.server.models import InitializationOptions
 
 from core.integrations._base.config import resolve
 from core.integrations.microsoft_defender.descriptor import MICROSOFT_DEFENDER
+from core.integrations.microsoft_defender.graph import (
+    REQUIRED_FIELDS,
+    DefenderXdrClient,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,35 +31,31 @@ def result(data):
     return [types.TextContent(type="text", text=json.dumps(data, indent=2))]
 
 
-def get_token():
+def _client():
+    """Build a Graph client from the configured credentials, or None.
+
+    FORK NOTE (docs/UPSTREAM.md): upstream minted a Defender **for Endpoint**
+    token here (scope ``https://api.securitycenter.microsoft.com/.default``)
+    and called ``api.securitycenter.microsoft.com/api``. This fork talks to
+    Defender **XDR** through Microsoft Graph, matching the ingestion service
+    and the application permissions the Entra app is actually granted:
+    SecurityIncident.Read.All, SecurityAlert.Read.All, ThreatHunting.Read.All.
+    """
     config = resolve(MICROSOFT_DEFENDER)
-    tenant = config.get("tenant_id")
-    client_id = config.get("client_id")
-    client_secret = config.get("client_secret")
-    if not all([tenant, client_id, client_secret]):
+    missing = [f for f in REQUIRED_FIELDS if not config.get(f)]
+    if missing:
         return None
-    try:
-        resp = httpx.post(
-            f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "scope": "https://api.securitycenter.microsoft.com/.default",
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return resp.json().get("access_token")
-    except Exception:
-        return None
+    return DefenderXdrClient(config)
 
 
 async def handle_list_tools():
     return [
         types.Tool(
-            name="mde_get_alerts",
-            description="Get Microsoft Defender alerts",
+            name="xdr_get_incidents",
+            description=(
+                "List Microsoft Defender XDR incidents (correlated across "
+                "endpoint, identity, email and cloud apps), newest updates first."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {"limit": {"type": "integer", "default": 20}},
@@ -64,79 +63,106 @@ async def handle_list_tools():
             },
         ),
         types.Tool(
-            name="mde_get_machine",
-            description="Get machine info",
+            name="xdr_get_incident",
+            description="Get one Defender XDR incident with its alerts expanded",
             inputSchema={
                 "type": "object",
-                "properties": {"machine_id": {"type": "string"}},
-                "required": ["machine_id"],
+                "properties": {"incident_id": {"type": "string"}},
+                "required": ["incident_id"],
             },
         ),
         types.Tool(
-            name="mde_isolate",
-            description="Isolate machine",
+            name="xdr_get_alerts",
+            description="List Defender XDR unified alerts (alerts_v2)",
+            inputSchema={
+                "type": "object",
+                "properties": {"limit": {"type": "integer", "default": 20}},
+                "required": [],
+            },
+        ),
+        types.Tool(
+            name="xdr_run_hunting_query",
+            description=(
+                "Run an advanced hunting KQL query against Defender XDR. "
+                "Read-only; requires ThreatHunting.Read.All."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "machine_id": {"type": "string"},
-                    "comment": {"type": "string"},
+                    "query": {"type": "string"},
+                    "timespan": {
+                        "type": "string",
+                        "description": "ISO-8601 interval, e.g. 2024-01-01T00:00:00Z/2024-01-02T00:00:00Z",
+                    },
                 },
-                "required": ["machine_id", "comment"],
+                "required": ["query"],
             },
         ),
     ]
 
 
 async def handle_call_tool(name: str, arguments: dict | None):
-    token = get_token()
-    if not token:
-        return result({"error": "Microsoft Defender not configured"})
+    client = _client()
+    if client is None:
+        return result({"error": "Microsoft Defender XDR not configured"})
 
     args = arguments or {}
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    base = "https://api.securitycenter.microsoft.com/api"
 
     try:
-        if name == "mde_get_alerts":
-            resp = httpx.get(
-                f"{base}/alerts",
-                headers=headers,
-                params={"$top": args.get("limit", 20)},
-                timeout=30,
+        if name == "xdr_get_incidents":
+            incidents = client.list_incidents(
+                limit=int(args.get("limit", 20)), expand_alerts=False
             )
-            resp.raise_for_status()
-            alerts = [
+            return result(
                 {
-                    "id": a.get("id"),
-                    "title": a.get("title"),
-                    "severity": a.get("severity"),
-                    "status": a.get("status"),
+                    "count": len(incidents),
+                    "incidents": [
+                        {
+                            "id": i.get("id"),
+                            "displayName": i.get("displayName"),
+                            "severity": i.get("severity"),
+                            "status": i.get("status"),
+                            "createdDateTime": i.get("createdDateTime"),
+                            "lastUpdateDateTime": i.get("lastUpdateDateTime"),
+                        }
+                        for i in incidents
+                    ],
                 }
-                for a in resp.json().get("value", [])
-            ]
-            return result({"count": len(alerts), "alerts": alerts})
-
-        elif name == "mde_get_machine":
-            mid = args.get("machine_id")
-            if not mid:
-                return result({"error": "machine_id required"})
-            resp = httpx.get(f"{base}/machines/{mid}", headers=headers, timeout=30)
-            resp.raise_for_status()
-            return result({"machine": resp.json()})
-
-        elif name == "mde_isolate":
-            mid = args.get("machine_id")
-            comment = args.get("comment")
-            if not mid or not comment:
-                return result({"error": "machine_id and comment required"})
-            resp = httpx.post(
-                f"{base}/machines/{mid}/isolate",
-                headers=headers,
-                json={"Comment": comment, "IsolationType": "Full"},
-                timeout=30,
             )
-            resp.raise_for_status()
-            return result({"success": True, "machine_id": mid, "action": "isolated"})
+
+        elif name == "xdr_get_incident":
+            incident_id = args.get("incident_id")
+            if not incident_id:
+                return result({"error": "incident_id required"})
+            return result({"incident": client.get_incident(str(incident_id))})
+
+        elif name == "xdr_get_alerts":
+            alerts = client.list_alerts(limit=int(args.get("limit", 20)))
+            return result(
+                {
+                    "count": len(alerts),
+                    "alerts": [
+                        {
+                            "id": a.get("id"),
+                            "title": a.get("title"),
+                            "severity": a.get("severity"),
+                            "status": a.get("status"),
+                            "category": a.get("category"),
+                            "serviceSource": a.get("serviceSource"),
+                            "incidentId": a.get("incidentId"),
+                        }
+                        for a in alerts
+                    ],
+                }
+            )
+
+        elif name == "xdr_run_hunting_query":
+            query = args.get("query")
+            if not query:
+                return result({"error": "query required"})
+            return result(
+                client.run_hunting_query(str(query), timespan=args.get("timespan"))
+            )
 
         return result({"error": f"Unknown tool: {name}"})
     except Exception as e:

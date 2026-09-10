@@ -91,27 +91,21 @@ async def test_crowdstrike_federation_adapter_does_not_block_the_loop():
 
 @pytest.mark.asyncio
 async def test_defender_fetch_alerts_does_not_block_the_loop():
+    """FORK: the Defender integration now reaches Defender XDR through
+    Microsoft Graph, so the blocking hop is the DefenderXdrClient rather than
+    a bare httpx.get plus a token exchange. The property under test — that
+    fetch_alerts offloads its synchronous work instead of awaiting it on the
+    loop — is unchanged. See docs/UPSTREAM.md."""
+    from core.integrations.microsoft_defender.graph import DefenderXdrClient
     from core.integrations.microsoft_defender.ingestion import MicrosoftDefenderIngestion
 
-    with patch(
-        "core.integrations.microsoft_defender.ingestion.get_integration_config",
-        return_value={},
-    ):
-        svc = MicrosoftDefenderIngestion()
+    svc = MicrosoftDefenderIngestion(
+        config={"tenant_id": "t", "client_id": "c", "client_secret": "s"}
+    )
 
-    response = MagicMock()
-    response.json.return_value = {"value": []}
-    response.raise_for_status.return_value = None
-
-    with patch.object(
-        svc, "_get_access_token", _blocking("tok-1")
-    ), patch(
-        "core.integrations.microsoft_defender.ingestion.httpx.get", _blocking(response)
-    ):
+    with patch.object(DefenderXdrClient, "list_incidents", _blocking([])):
         _, ticks = await _tick_while(svc.fetch_alerts(limit=10))
 
-    # Two blocking hops here (token exchange + alert fetch), so the budget
-    # is 2 * BLOCK_SECONDS.
     assert ticks >= MIN_TICKS, (
         f"loop served only {ticks} ticks during the Defender fetch — a "
         "blocking call is running on the event loop"

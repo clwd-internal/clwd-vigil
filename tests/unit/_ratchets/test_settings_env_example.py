@@ -123,6 +123,24 @@ NOT_SETTINGS = {
     "OPENAI_BASE_URL",
     "OPENAI_ENABLED",
     "OPENAI_ORGANIZATION",
+    # FORK (clwd-internal/clwd-vigil): Azure Container Apps deployment knobs.
+    # Deliberately NOT Settings fields. Adding them would mean editing
+    # core/config.py -- an upstream hot file -- on a fork that has to rebase
+    # onto a fast-moving upstream. Settings uses extra="ignore", so fork-owned
+    # modules under core/tenancy/, core/auth/sso_*.py and
+    # core/platform/url_safety.py read them from os.environ at the process
+    # boundary instead. See docs/AZURE.md and docs/UPSTREAM.md.
+    "AZURE_CLIENT_ID",
+    "VIGIL_KEY_VAULT_URL",
+    "VIGIL_SECRET_CACHE_TTL",
+    "VIGIL_TENANT_INSTANCES",
+    "VIGIL_SSO_ENABLED",
+    "VIGIL_SSO_PRINCIPAL_ENDPOINT",
+    "VIGIL_SSO_SIDECAR_BASE",
+    "VIGIL_SSO_ROLE_MAP",
+    "VIGIL_SSO_DEFAULT_ROLE",
+    "VIGIL_READINESS_REQUIRE_REDIS",
+    "VIGIL_EXTRA_PROVIDER_HOSTS",
 }
 
 

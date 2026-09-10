@@ -97,3 +97,13 @@ def _ensure_builtins_loaded() -> None:
         from core.integrations.splunk import adapter as _splunk_adapter  # noqa: F401
     except Exception as e:
         logger.warning("Failed to load builtin federation adapters: %s", e)
+
+    # FORK: register one adapter per customer instance (<vendor>:<instance_id>).
+    # Guarded separately so a tenancy misconfiguration cannot take the builtin
+    # adapters down with it. See core/tenancy/ and docs/UPSTREAM.md.
+    try:
+        from core.tenancy.adapters import register_instance_adapters
+
+        register_instance_adapters()
+    except Exception as e:
+        logger.warning("Failed to load per-instance federation adapters: %s", e)

@@ -1,0 +1,174 @@
+# Keep the fork aware of upstream.
+#
+# This is a fork of Vigil-SOC/vigil. The longer we go without merging upstream,
+# the more expensive each merge becomes — so this runs weekly, merges
+# upstream/main into the long-lived `upstream-sync` branch, and opens a PR into
+# main when there is anything to bring over.
+#
+# It deliberately does NOT auto-merge. Every conflict in this repo is a
+# decision (see docs/UPSTREAM.md "Files this fork modifies"), not something a
+# bot should resolve. When the merge conflicts, the workflow pushes the
+# conflicted state to a dated branch and opens a draft PR so a human picks it
+# up rather than the sync silently going quiet.
+name: Upstream sync
+
+on:
+  schedule:
+    # Mondays 04:17 UTC. Off the hour so we are not competing with everyone
+    # else's cron for GitHub-hosted runners.
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+# Never run on the upstream repo itself, mirroring the guard upstream puts on
+# its own CI. Harmless there, but the PR it would open would be nonsense.
+env:
+  UPSTREAM_REPO: Vigil-SOC/vigil
+  UPSTREAM_BRANCH: main
+  SYNC_BRANCH: upstream-sync
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository != 'Vigil-SOC/vigil'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Submodules are not needed to compute or merge history, and
+          # mempalace is public so skipping it costs nothing.
+          submodules: false
+
+      - name: Configure git identity
+        run: |
+          git config user.name "vigil-upstream-sync[bot]"
+          git config user.email "vigil-upstream-sync@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}" 2>/dev/null || \
+            git remote set-url upstream "https://github.com/${UPSTREAM_REPO}"
+          git fetch upstream "${UPSTREAM_BRANCH}" --prune
+
+      - name: Decide whether there is anything to sync
+        id: check
+        run: |
+          # Establish the sync branch on first run: branch it from our main so
+          # the first merge is fork-history-vs-upstream-history exactly once.
+          if git show-ref --verify --quiet "refs/remotes/origin/${SYNC_BRANCH}"; then
+            git switch -c "${SYNC_BRANCH}" "origin/${SYNC_BRANCH}"
+          else
+            echo "::notice::creating ${SYNC_BRANCH} from origin/main (first run)"
+            git switch -c "${SYNC_BRANCH}" origin/main
+            git push origin "${SYNC_BRANCH}"
+          fi
+
+          behind=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
+          echo "behind=${behind}" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$(git rev-parse --short "upstream/${UPSTREAM_BRANCH}")" >> "$GITHUB_OUTPUT"
+          if [ "${behind}" -eq 0 ]; then
+            echo "::notice::fork is up to date with upstream/${UPSTREAM_BRANCH}"
+          else
+            echo "::notice::${behind} upstream commit(s) to bring over"
+          fi
+
+      - name: Merge upstream
+        id: merge
+        if: steps.check.outputs.behind != '0'
+        run: |
+          # --no-ff on purpose: the merge commit is what lets the *next* sync
+          # tell what has already been applied. See docs/UPSTREAM.md.
+          if git merge --no-ff --no-edit \
+              -m "chore(upstream): merge ${UPSTREAM_REPO}@${{ steps.check.outputs.upstream_sha }}" \
+              "upstream/${UPSTREAM_BRANCH}"; then
+            echo "conflicted=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflicted=true" >> "$GITHUB_OUTPUT"
+            # Commit the conflicted tree so a human can `gh pr checkout` it and
+            # resolve from exactly the state the bot saw. Conflict markers are
+            # in the diff and the PR is a draft, so nothing can merge by accident.
+            git add -A
+            git commit -m "chore(upstream): CONFLICTED merge of ${UPSTREAM_REPO}@${{ steps.check.outputs.upstream_sha }}"
+          fi
+          echo "conflicts<<EOF" >> "$GITHUB_OUTPUT"
+          git diff --name-only --diff-filter=U HEAD~1 HEAD 2>/dev/null | head -50 >> "$GITHUB_OUTPUT" || true
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Push sync branch
+        if: steps.check.outputs.behind != '0'
+        run: |
+          if [ "${{ steps.merge.outputs.conflicted }}" = "true" ]; then
+            branch="${SYNC_BRANCH}/conflicted-$(date -u +%Y%m%d)-${{ steps.check.outputs.upstream_sha }}"
+            git push --force-with-lease origin "HEAD:refs/heads/${branch}"
+          else
+            # Fast-forward-only on the long-lived branch: never force-push it.
+            git push origin "${SYNC_BRANCH}"
+            branch="${SYNC_BRANCH}"
+          fi
+          echo "PR_HEAD=${branch}" >> "$GITHUB_ENV"
+
+      - name: Open or update the pull request
+        if: steps.check.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          conflicted="${{ steps.merge.outputs.conflicted }}"
+          title="chore: sync upstream ${UPSTREAM_REPO}@${{ steps.check.outputs.upstream_sha }}"
+          body=$(cat <<'BODY'
+          Automated upstream sync. **This PR does not auto-merge.**
+
+          Before merging:
+
+          - [ ] Read `docs/UPSTREAM.md` → "Files this fork modifies". Every one of
+                our divergences is listed there; if the merge touched one, check the
+                fork behaviour survived.
+          - [ ] `python -m pytest tests/unit tests/security -q`
+          - [ ] `pre-commit run --all-files`
+          - [ ] Update the file table in `docs/UPSTREAM.md` if upstream moved or
+                renamed anything we patch.
+
+          **Merge with a merge commit, not a squash.** Squashing `upstream-sync`
+          destroys the per-commit identity the next sync needs to tell what has
+          already been applied.
+          BODY
+          )
+
+          if [ "$conflicted" = "true" ]; then
+            title="[CONFLICTS] ${title}"
+            body="${body}
+
+          ---
+
+          :warning: **The automated merge conflicted.** The conflicted tree was
+          committed as-is, so \`gh pr checkout\` gives you exactly what the bot saw,
+          conflict markers included. Resolve, commit, and take this out of draft.
+
+          Conflicting paths:
+
+          \`\`\`
+          ${{ steps.merge.outputs.conflicts }}
+          \`\`\`"
+          fi
+
+          existing=$(gh pr list --head "${PR_HEAD}" --base main --state open --json number --jq '.[0].number')
+          if [ -n "${existing}" ]; then
+            gh pr edit "${existing}" --title "${title}" --body "${body}"
+            echo "::notice::updated PR #${existing}"
+          else
+            draft_flag=""
+            [ "$conflicted" = "true" ] && draft_flag="--draft"
+            # shellcheck disable=SC2086
+            gh pr create --base main --head "${PR_HEAD}" \
+              --title "${title}" --body "${body}" ${draft_flag} \
+              --label "upstream-sync" || \
+            gh pr create --base main --head "${PR_HEAD}" \
+              --title "${title}" --body "${body}" ${draft_flag}
+          fi

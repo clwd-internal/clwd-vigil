@@ -1,0 +1,143 @@
+# Build and publish the container images the Azure infrastructure deploys.
+#
+# Three images, one per Dockerfile under infra/docker:
+#
+#   vigil-backend   Dockerfile.backend   API, llm-worker (same image, two commands)
+#   vigil-agent     Dockerfile.agent     agent-worker, agent-serve (same image, two commands)
+#   vigil-daemon    Dockerfile.daemon    soc-daemon
+#
+# Tagged with the commit SHA and NOTHING ELSE. No `latest`, no `dev`, no branch
+# name. A floating tag makes "which code is in production?" unanswerable and
+# makes a rollback a guess; it also defeats Container Apps revision management,
+# which keys a new revision off a changed image reference. The receiving
+# workflow in clwd-internal/clwd-soc enforces this — it rejects any tag that is
+# not 7-40 hex characters — so a floating tag would fail the deploy anyway,
+# just later and more confusingly.
+#
+# Authentication to ACR is OIDC federated: no registry password, no service
+# principal secret, nothing to rotate or leak. That is why `permissions:
+# id-token: write` is here.
+#
+# Upstream's own CI (.github/workflows/ci-cd.yml) is gated on
+# `github.repository == 'Vigil-SOC/vigil'` and so never fires here. This
+# workflow is gated the other way for symmetry: it must never run if this file
+# is ever contributed upstream.
+name: Build images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to dispatch the deploy for
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+      dispatch:
+        description: Notify clwd-internal/clwd-soc after a successful push
+        type: boolean
+        default: true
+
+concurrency:
+  # One build per ref. Cancelling an in-flight build is safe because every tag
+  # is immutable and SHA-derived, so nothing half-published can be overwritten.
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    if: github.repository != 'Vigil-SOC/vigil'
+    runs-on: ubuntu-latest
+    strategy:
+      # Do not cancel siblings: a partial publish is worse than a slow one,
+      # because the dispatch job below refuses to fire unless all three exist.
+      fail-fast: false
+      matrix:
+        include:
+          - image: vigil-backend
+            dockerfile: infra/docker/Dockerfile.backend
+          - image: vigil-agent
+            dockerfile: infra/docker/Dockerfile.agent
+          - image: vigil-daemon
+            dockerfile: infra/docker/Dockerfile.daemon
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          # mempalace is a public submodule that Dockerfile.backend and
+          # Dockerfile.daemon both COPY. Without this the build fails on an
+          # empty directory.
+          submodules: recursive
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign in to the container registry
+        # `az acr login` exchanges the federated Azure token for a registry
+        # token, so no ACR credential is stored in this repository.
+        run: az acr login --name "${{ secrets.ACR_NAME }}"
+
+      - name: Build and push ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          # The build context is the repository root, not infra/docker — every
+          # Dockerfile COPYs from the project root (services/, core/,
+          # mempalace/).
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false
+          tags: ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  notify:
+    # Only after all three images exist. The deploy in clwd-internal/clwd-soc
+    # updates every Container App to the same tag in one go, so dispatching
+    # while one image is still missing would roll out a revision that cannot
+    # pull.
+    needs: build
+    if: >-
+      github.repository != 'Vigil-SOC/vigil' &&
+      (github.event_name != 'workflow_dispatch' || inputs.dispatch)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the tag is a bare commit SHA
+        # The receiver rejects anything that is not 7-40 hex characters. Fail
+        # here, where the message is legible, rather than there.
+        run: |
+          tag='${{ github.sha }}'
+          if ! printf '%s' "$tag" | grep -Eq '^[0-9a-f]{7,40}$'; then
+            echo "::error::refusing to dispatch a non-SHA image tag: $tag"
+            exit 1
+          fi
+
+      - name: Tell clwd-internal/clwd-soc there is a new image
+        env:
+          # A PAT (or GitHub App token) with `contents: write` on the
+          # infrastructure repo. The default GITHUB_TOKEN cannot dispatch
+          # across repositories.
+          GH_TOKEN: ${{ secrets.SOC_DISPATCH_TOKEN }}
+          ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+        run: |
+          gh api repos/clwd-internal/clwd-soc/dispatches \
+            --method POST \
+            --field event_type='vigil-image-published' \
+            --field "client_payload[image_tag]=${{ github.sha }}" \
+            --field "client_payload[environment]=${ENVIRONMENT}"

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from core.config import get_integration_config
 from core.ingestion.siem_ingestion_service import SIEMIngestionService
+from core.integrations.azure_sentinel.descriptor import REQUIRED_FIELDS
 from core.time import utcnow
 
 logger = logging.getLogger(__name__)
@@ -19,11 +20,23 @@ logger = logging.getLogger(__name__)
 class AzureSentinelIngestion(SIEMIngestionService):
     """Azure Sentinel ingestion service."""
 
-    def __init__(self):
-        """Initialize Azure Sentinel ingestion."""
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize Azure Sentinel ingestion.
+
+        FORK NOTE (docs/UPSTREAM.md): ``config`` is the whole multi-tenant
+        seam. Upstream resolves one flat global dict from
+        ``integrations_config.json``, which is correct for a single-tenant
+        install and cannot express "this customer's Sentinel workspace". The
+        argument defaults to exactly the upstream behaviour, so a zero-argument
+        construction — which is what upstream's own adapter does — is unchanged.
+        ``core.tenancy.adapters`` passes a per-instance dict resolved from Key
+        Vault instead.
+        """
         super().__init__()
         self.siem_name = "Azure Sentinel"
-        self.config = get_integration_config("azure-sentinel")
+        self.config = (
+            config if config is not None else get_integration_config("azure-sentinel")
+        )
 
     async def fetch_alerts(
         self,
@@ -43,8 +56,22 @@ class AzureSentinelIngestion(SIEMIngestionService):
             List of raw incident dictionaries
         """
         try:
-            from azure.identity import ClientSecretCredential
-            from azure.mgmt.securityinsight import SecurityInsights
+            # FORK NOTE (docs/UPSTREAM.md): upstream caught ImportError around
+            # this whole method and returned [], which made "azure-identity was
+            # never installed" look exactly like "this tenant had no
+            # incidents". A silent tenant is the worst failure mode a SOC has.
+            # Both packages are declared in requirements.txt now, so reaching
+            # this branch means a broken image and must be loud.
+            try:
+
+                from azure.identity import ClientSecretCredential
+                from azure.mgmt.securityinsight import SecurityInsights
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Azure SDK missing for the Azure Sentinel integration "
+                    f"({exc}). Install: pip install azure-identity "
+                    "azure-mgmt-securityinsight (both are in requirements.txt)."
+                ) from exc
 
             # Get config
             tenant_id = self.config.get("tenant_id")
@@ -54,17 +81,15 @@ class AzureSentinelIngestion(SIEMIngestionService):
             resource_group = self.config.get("resource_group")
             workspace_name = self.config.get("workspace_name")
 
-            if not all(
-                [
-                    tenant_id,
-                    client_id,
-                    client_secret,
-                    subscription_id,
-                    resource_group,
-                    workspace_name,
-                ]
-            ):
-                logger.error("Azure Sentinel configuration incomplete")
+            # REQUIRED_FIELDS is imported from the descriptor rather than
+            # re-listed, so the guard and the configurable field set cannot
+            # drift apart the way they had upstream.
+            missing = [f for f in REQUIRED_FIELDS if not self.config.get(f)]
+            if missing:
+                logger.error(
+                    "Azure Sentinel configuration incomplete; missing: %s",
+                    ", ".join(missing),
+                )
                 return []
 
             # Authenticate
@@ -139,14 +164,15 @@ class AzureSentinelIngestion(SIEMIngestionService):
             logger.info(f"Fetched {len(incidents)} incidents from Azure Sentinel")
             return incidents
 
-        except ImportError:
-            logger.error(
-                "Azure SDK not installed. Install: pip install azure-mgmt-securityinsight azure-identity"
-            )
-            return []
         except Exception as e:
+            # Deliberately re-raised, not swallowed into []. Returning [] is
+            # how a credential rotation or a revoked app registration silently
+            # stops one customer's ingest while the dashboard stays green.
+            # The ERROR log above fires either way; raising also lets a caller
+            # that does care (the instance API's connectivity probe, tests)
+            # see the failure instead of an empty list.
             logger.error(f"Error fetching Azure Sentinel incidents: {e}")
-            return []
+            raise
 
     def transform_alert_to_finding(
         self, alert: Dict[str, Any]
