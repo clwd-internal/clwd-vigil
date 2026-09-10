@@ -27,6 +27,19 @@ urllib3>=2.0.0
 boto3>=1.43.77
 aiohttp>=3.9.0
 
+# Azure. core/integrations/azure_sentinel/ingestion.py has always imported
+# azure.identity and azure.mgmt.securityinsight; the packages were simply never
+# declared, so the import failed and the integration returned no incidents on
+# every install. azure-keyvault-secrets and azure-identity are also how the
+# multi-tenant deployment resolves per-customer credentials
+# (core/tenancy/secrets.py) using the container's managed identity.
+# msal backs the Microsoft Graph client-credentials flow in
+# core/integrations/microsoft_defender/ingestion.py.
+azure-identity>=1.19.0
+azure-keyvault-secrets>=4.9.0
+azure-mgmt-securityinsight>=2.0.0
+msal>=1.31.0
+
 # Core declared transitive deps
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
