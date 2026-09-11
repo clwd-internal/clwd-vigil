@@ -39,7 +39,7 @@ Every maintainer must add it once:
 | --- | --- | --- |
 | `develop` | Default branch and integration branch. Everything lands here first — features, fixes and upstream syncs alike. | Normal PR flow. Cut feature branches from here. |
 | `main` | Production. What the Azure deployment builds from. | Only ever receives `develop`, via a promotion PR. Never merge a feature branch straight into it. |
-| `upstream-sync` | Long-lived integration branch carrying upstream's history into the fork. | **Never squash-merge, never force-push, never rebase.** |
+| `upstream-sync` | Disposable **staging** branch. Holds one merge of `upstream/main` on top of `develop`, just long enough to review it as a PR. | Re-seeded from `develop` on every run. Force-pushed by the workflow; never build on it. |
 
 `develop` is deliberately the default so that a feature branch cut from the repo
 without thinking is based on the newest work, not on whatever is in production.
@@ -59,6 +59,37 @@ tree hashes, so the deployed content did not change — only its history did.
 
 The rule that prevents a repeat: **upstream work is new development.** It is
 reviewed on `develop` and reaches production the same way everything else does.
+
+### Why `upstream-sync` is re-seeded, not long-lived
+
+It was long-lived at first, and that was a bug — a dangerous one, caught only
+because something unrelated failed.
+
+On its first real run the workflow found an `upstream-sync` branch left over
+from the fork's early days, pointing at `e22e18b` — the original merge-base, by
+then **35 commits behind `develop`**. It reused that tip, computed "14 upstream
+commits behind" against it (while `develop` was in fact already fully up to date
+with upstream), merged, and produced a branch whose diff against `develop` was
+**5063 deletions across 38 files**: the multi-tenancy, SSO, Defender and
+Sentinel work, all removed. It would have opened that as a clean, non-draft,
+auto-labelled PR titled "chore: sync upstream".
+
+It did not open, only because the `clwd-internal` org forbids GitHub Actions
+from creating pull requests. That is not a safety mechanism we should rely on.
+
+Two things now prevent it:
+
+1. **The staging branch is re-created from `origin/develop` on every run.** A
+   stale tip can no longer make `behind` meaningless. This costs nothing
+   precisely *because* of the never-squash rule below: `develop` already
+   contains the previous sync's merge commit, so git keeps full knowledge of
+   which upstream commits have been applied.
+2. **The workflow asserts `origin/develop` is an ancestor of the merge result**
+   before pushing. A sync adds upstream's work on top of ours; it never removes
+   ours. If that invariant does not hold, the run fails loudly.
+
+The general lesson: when a sync proposes deletions, check `behind` against the
+branch you actually care about before believing it.
 
 ### Why `upstream-sync` is never squashed
 
