@@ -1,0 +1,17 @@
+# infra/docker/Dockerfile.bifrost
+# =============================================================================
+# Bifrost bootstrap image for Azure Container Apps
+#
+# Compose bind-mounts /app/data/config.json from the repo, but ACA has no
+# equivalent file mount in this deployment path. Baking the bootstrap config
+# into the image keeps first boot deterministic there without changing where
+# Bifrost persists its live SQLite state.
+#
+# Keep /app/data writable. Bifrost stores config.db and logs.db alongside the
+# seeded config.json, so this image only copies the bootstrap file and relies
+# on the container's writable layer for everything else.
+# =============================================================================
+
+FROM maximhq/bifrost:latest
+
+COPY infra/docker/bifrost/config.json /app/data/config.json
