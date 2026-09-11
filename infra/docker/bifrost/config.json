@@ -46,6 +46,29 @@
         }
       ]
     },
+    "azure": {
+      "network_config": {
+        "default_request_timeout_in_seconds": 1800,
+        "stream_idle_timeout_in_seconds": 300,
+        "max_retries": 0
+      },
+      "keys": [
+        {
+          "name": "default-azure-foundry-key",
+          "weight": 1,
+          "value": "env.FOUNDRY_API_KEY",
+          "models": [
+            "*"
+          ],
+          "aliases": {
+            "claude-sonnet-4-6": "gpt-4o"
+          },
+          "azure_key_config": {
+            "endpoint": "env.AZURE_FOUNDRY_ENDPOINT"
+          }
+        }
+      ]
+    },
     "ollama": {
       "network_config": {
         "default_request_timeout_in_seconds": 1800,

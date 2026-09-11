@@ -1,10 +1,11 @@
 # Build and publish the container images the Azure infrastructure deploys.
 #
-# Three images, one per Dockerfile under infra/docker:
+# Four images, one per Dockerfile under infra/docker:
 #
 #   vigil-backend   Dockerfile.backend   API, llm-worker (same image, two commands)
 #   vigil-agent     Dockerfile.agent     agent-worker, agent-serve (same image, two commands)
 #   vigil-daemon    Dockerfile.daemon    soc-daemon
+#   vigil-bifrost   Dockerfile.bifrost   Bifrost bootstrap image for ACA
 #
 # Tagged with the commit SHA and NOTHING ELSE. No `latest`, no `dev`, no branch
 # name. A floating tag makes "which code is in production?" unanswerable and
@@ -59,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       # Do not cancel siblings: a partial publish is worse than a slow one,
-      # because the dispatch job below refuses to fire unless all three exist.
+      # because the dispatch job below refuses to fire unless all four exist.
       fail-fast: false
       matrix:
         include:
@@ -69,6 +70,8 @@ jobs:
             dockerfile: infra/docker/Dockerfile.agent
           - image: vigil-daemon
             dockerfile: infra/docker/Dockerfile.daemon
+          - image: vigil-bifrost
+            dockerfile: infra/docker/Dockerfile.bifrost
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -108,7 +111,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   notify:
-    # Only after all three images exist. The deploy in clwd-internal/clwd-soc
+    # Only after all four images exist. The deploy in clwd-internal/clwd-soc
     # updates every Container App to the same tag in one go, so dispatching
     # while one image is still missing would roll out a revision that cannot
     # pull.
