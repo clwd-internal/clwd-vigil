@@ -64,7 +64,8 @@
             "claude-sonnet-4-6": "gpt-4o"
           },
           "azure_key_config": {
-            "endpoint": "env.AZURE_FOUNDRY_ENDPOINT"
+            "endpoint": "env.AZURE_FOUNDRY_ENDPOINT",
+            "api_version": "2024-10-21"
           }
         }
       ]
