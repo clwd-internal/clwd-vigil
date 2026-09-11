@@ -42,7 +42,11 @@ export interface BifrostKey {
   models: string[]
   blacklisted_models?: string[]
   weight: number
-  enabled: boolean
+  /** Absent on read: Bifrost's key-list response has no `enabled` field (it
+      serialises its other bools, e.g. use_for_batch_api, even when false), so
+      undefined means "not reported", NOT disabled. Always read it as
+      `enabled !== false`. It is still accepted and honoured on write. */
+  enabled?: boolean
   /** Bifrost's own verdict: "success", "unknown", "list_models_failed", ... */
   status?: string
   description?: string
@@ -246,7 +250,11 @@ function credFromEnv(k: BifrostKey): boolean {
     credential a human actually set, so a fresh install's env-placeholder seed
     keys don't read as already-configured. */
 export function keyIsRoutable(k: BifrostKey): boolean {
-  if (!k.enabled) return false
+  // `enabled` is absent from Bifrost's read shape, so only an explicit false
+  // disqualifies. Testing `!k.enabled` rejected every key the gateway reported,
+  // which stranded installs whose only provider is seeded from config.json
+  // behind the setup wizard even though the key routed fine.
+  if (k.enabled === false) return false
   if (k.status === 'success') return true
   if (!k.status || k.status === 'unknown') return !credFromEnv(k)
   return false
