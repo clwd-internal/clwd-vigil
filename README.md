@@ -138,7 +138,7 @@ MCP servers live in each vendor's slice as `core/integrations/<vendor>/tool.py` 
 ## Quick Start
 
 ```bash
-git clone --recurse-submodules https://github.com/Vigil-SOC/vigil.git
+git clone https://github.com/Vigil-SOC/vigil.git
 cd vigil
 ./start.sh
 ```
@@ -153,6 +153,18 @@ Auth bypass is enabled by default (`DEV_MODE=true`) for quick development. Full 
 > (`docker pull ghcr.io/vigil-soc/vigil-backend:<version>`) or check out a
 > release tag before running (`git checkout v<version>`). Find the newest
 > version on the [releases page](https://github.com/Vigil-SOC/vigil/releases/latest).
+>
+> Released images are signed keyless by
+> [`.github/workflows/release.yml`](.github/workflows/release.yml). Confirm a
+> pull came from that workflow (image tag drops the leading `v`; the certificate
+> identity uses the git tag):
+>
+> ```bash
+> cosign verify \
+>   --certificate-identity https://github.com/Vigil-SOC/vigil/.github/workflows/release.yml@refs/tags/v<version> \
+>   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+>   ghcr.io/vigil-soc/vigil-backend:<version>
+> ```
 
 ### Prerequisites
 
@@ -161,7 +173,7 @@ Auth bypass is enabled by default (`DEV_MODE=true`) for quick development. Full 
   independent of any system, conda, or pyenv Python you already have
 - **Node.js 18+** (for frontend)
 - **Docker Desktop** (must be running — used for PostgreSQL)
-- **Git** (with submodule support)
+- **Git**
 - An LLM provider key. Vigil supports Anthropic Claude (default), OpenAI, and Ollama (local) — configure providers in Settings → AI Config. See the [Bifrost gateway](https://vigilsoc.org/docs/bifrost/) notes for the multi-provider setup. *(optional for initial testing)*
 
 ### Default Login Credentials
@@ -179,12 +191,8 @@ Auth bypass is enabled by default (`DEV_MODE=true`) for quick development. Full 
 <summary>Click to expand manual setup steps</summary>
 
 ```bash
-# Clone with submodules
-git clone --recurse-submodules https://github.com/Vigil-SOC/vigil.git
+git clone https://github.com/Vigil-SOC/vigil.git
 cd vigil
-
-# If you already cloned without --recurse-submodules:
-git submodule update --init --recursive
 
 # Environment (DEV_MODE enabled by default)
 cp env.example .env

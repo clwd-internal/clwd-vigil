@@ -91,6 +91,38 @@ SECURITY_DETECTION_TOOLS = [
             },
         },
     },
+    {
+        "name": "lint_detections",
+        "description": "Lint Sigma detection rules for match keys tied to a specific IP, hostname, user, or subnet. Returns rewrite guidance to make the rule behavioural. Pass rule_yaml for one rule or source_path to walk .yml files under an existing source. Does not block importing community rule sources.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "rule_yaml": {
+                    "type": "string",
+                    "description": "Sigma rule YAML to lint. Pass this or source_path, not both.",
+                },
+                "source_path": {
+                    "type": "string",
+                    "description": "Directory of Sigma .yml files (or a single .yml file) to lint.",
+                },
+            },
+        },
+    },
+    {
+        "name": "reconstruct_run",
+        "description": "Reconstruct a red-run action trace into per-step detection verdicts. Correlates each step to ingested Findings by host, entity, and time. Verdict is rule, loglm, both, or missed. Cite matching Finding ids. Unknown keys on a step are ignored.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "items": {"type": "object"},
+                    "description": "Action-trace steps. Join keys are host/entity/time (hostname, src_ip, user, started_at/ended_at or timestamp). Unknown keys are ignored.",
+                }
+            },
+            "required": ["steps"],
+        },
+    },
 ]
 
 # DeepTempo Findings Tools (Already implemented in backend)
