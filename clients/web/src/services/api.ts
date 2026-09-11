@@ -166,7 +166,6 @@ export const findingsApi = {
     cluster_id?: number
     min_anomaly_score?: number
     limit?: number
-    force_refresh?: boolean
   }) => api.get('/findings/', { params }),
   
   getById: (id: string) => api.get(`/findings/${id}`),
@@ -194,7 +193,6 @@ export const casesApi = {
   getAll: (params?: {
     status?: string
     priority?: string
-    force_refresh?: boolean
   }) => api.get<Schema<'CaseListResponse'>>('/cases/', { params }),
 
   getById: (id: string) => api.get<Schema<'CaseSchema'>>(`/cases/${id}`),
@@ -406,48 +404,7 @@ export const mcpApi = {
 }
 
 export const claudeApi = {
-  uploadFile: (file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    return api.post('/claude/upload-file', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-  },
-  
   getModels: () => api.get('/claude/models'),
-  
-  summarizeConversation: (data: {
-    messages: Array<{
-      role: string
-      content: string | Array<{
-        type: string
-        text?: string
-        source?: any
-      }>
-    }>
-    model?: string
-  }) => api.post('/claude/summarize', data, { timeout: LLM_TIMEOUT }),
-
-  analyzeFinding: (finding_id: string, context?: string) =>
-    api.post('/claude/analyze-finding', null, {
-      params: { finding_id, context },
-      timeout: LLM_TIMEOUT,
-    }),
-  
-  generateChatReport: (data: {
-    tab_title: string
-    messages: Array<{
-      role: string
-      content: string | Array<{
-        type: string
-        text?: string
-        source?: any
-      }>
-    }>
-    notes?: string
-  }) => api.post('/claude/generate-chat-report', data, { timeout: LLM_TIMEOUT }),
 }
 
 export const agentsApi = {
@@ -539,8 +496,6 @@ export const configApi = {
     access_key_id?: string
     secret_access_key?: string
     session_token?: string
-    findings_path?: string
-    cases_path?: string
     parquet_prefix?: string
   }) => api.post('/config/s3', data),
   
@@ -619,8 +574,6 @@ export const configApi = {
     review_model: string
     workdir_base: string
   }) => api.post('/config/orchestrator', data),
-
-  getMempalaceHealth: () => api.get<MempalaceHealth>('/config/mempalace/health'),
 }
 
 export interface PlatformDatabaseProxyConfig {
@@ -633,21 +586,6 @@ export interface PlatformDatabaseProxyConfig {
   // Booleans only — secret values are never returned by the API.
   has_proxy_password: boolean
   has_ssh_key_passphrase: boolean
-}
-
-// Mempalace is hidden from the MCP list: it's an always-on core dependency, so
-// its health surfaces on the General tab (#136).
-export interface MempalaceHealth {
-  connected: boolean
-  error: string | null
-  palace_path: string
-  palace_exists: boolean
-  size_bytes: number | null
-  size_human: string | null
-  last_modified_iso: string | null
-  closed_cases_count: number | null
-  memories_count: number | null
-  memories_count_source: 'chromadb' | 'unavailable'
 }
 
 // the backend calls the connector BFF server-to-server, so the mint secret
@@ -954,14 +892,6 @@ export const timelineApi = {
   }) => api.get('/timeline/range', { params }),
   
   getClusterTimeline: (cluster_id: string) => api.get(`/timeline/cluster/${cluster_id}`),
-  
-  getEventVisualization: (event_id: string, params?: {
-    time_window_minutes?: number
-    include_ai_analysis?: boolean
-  }) => api.get(`/timeline/event/${event_id}/visualization`, { params }),
-  
-  getFindingEvents: (finding_id: string) => 
-    api.get(`/timeline/finding/${finding_id}/context`, { params: { time_window_minutes: 60 } }),
 }
 
 export const detectionRulesApi = {

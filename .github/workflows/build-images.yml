@@ -76,9 +76,11 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
         with:
-          # mempalace is a public submodule that Dockerfile.backend and
-          # Dockerfile.daemon both COPY. Without this the build fails on an
-          # empty directory.
+          # Upstream #844 retired the mempalace submodule, so there is no
+          # .gitmodules left and this is currently a no-op. Kept deliberately:
+          # if a submodule ever returns, a Dockerfile COPYing it would
+          # otherwise fail on an empty directory, and that failure is slow to
+          # diagnose.
           submodules: recursive
 
       - name: Set up Buildx
@@ -100,8 +102,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           # The build context is the repository root, not infra/docker — every
-          # Dockerfile COPYs from the project root (services/, core/,
-          # mempalace/).
+          # Dockerfile COPYs from the project root (services/, core/).
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
