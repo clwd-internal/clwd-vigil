@@ -1236,6 +1236,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bifrost/routability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Routability
+         * @description Per-key and per-provider "can this actually route?".
+         *
+         *     One call answers what used to take 1 + N proxy round trips — the setup gate
+         *     listed providers, then every provider's keys, on its critical path.
+         */
+        get: operations["get_api_bifrost_routability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bifrost/{path}": {
         parameters: {
             query?: never;
@@ -2560,33 +2583,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/claude/analyze-finding": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Analyze Finding
-         * @description Analyze a specific finding with Claude.
-         *
-         *     Args:
-         *         finding_id: The finding ID to analyze
-         *         context: Optional additional context
-         *
-         *     Returns:
-         *         Analysis result
-         */
-        post: operations["post_api_claude_analyze-finding"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/claude/chat/stream": {
         parameters: {
             query?: never;
@@ -2601,32 +2597,6 @@ export interface paths {
          * @description Stream a chat turn from the agent layer, holding this wire contract.
          */
         post: operations["post_api_claude_chat_stream"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/claude/generate-chat-report": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate Chat Report
-         * @description Generate a PDF report from a chat conversation.
-         *
-         *     Args:
-         *         request: Chat report request with messages and metadata
-         *
-         *     Returns:
-         *         Report file information
-         */
-        post: operations["post_api_claude_generate-chat-report"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2656,55 +2626,6 @@ export interface paths {
         get: operations["get_api_claude_models"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/claude/summarize": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Summarize Conversation
-         * @description Summarize a conversation into a condensed context message.
-         *
-         *     Used when conversations approach the context window limit.
-         *     Returns a single summary message that preserves key context.
-         */
-        post: operations["post_api_claude_summarize"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/claude/upload-file": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload File
-         * @description Upload a file (image or document) for use in chat.
-         *
-         *     Args:
-         *         file: The file to upload
-         *
-         *     Returns:
-         *         Base64 encoded file content and metadata
-         */
-        post: operations["post_api_claude_upload-file"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3000,33 +2921,6 @@ export interface paths {
          *         Test result with success/failure and message
          */
         post: operations["post_api_config_integrations_integration_id_test"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/config/mempalace/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Mempalace Health
-         * @description Health snapshot for the mempalace memory store.
-         *
-         *     Aggregates MCP connection state with filesystem facts about the
-         *     palace directory so operators can sanity-check at a glance whether
-         *     memories are actually being persisted. Always returns 200 — failures
-         *     are surfaced via ``connected: false`` and ``error`` fields rather
-         *     than HTTP errors, so the panel can render even when mempalace is
-         *     completely down.
-         */
-        get: operations["get_api_config_mempalace_health"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4029,148 +3923,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/graph/attack-path/{case_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Attack Path
-         * @description Get attack path visualization for a case.
-         *
-         *     Shows the progression of an attack across systems, highlighting
-         *     lateral movement and compromise chains.
-         *
-         *     Args:
-         *         case_id: Case identifier
-         *
-         *     Returns:
-         *         Graph data showing attack progression
-         */
-        get: operations["get_api_graph_attack-path_case_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/graph/cluster/{cluster_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Cluster Graph
-         * @description Get graph visualization for a cluster of findings.
-         *
-         *     Shows how findings in a cluster are related through shared entities.
-         *
-         *     Args:
-         *         cluster_id: Cluster identifier
-         *
-         *     Returns:
-         *         Graph data for the cluster
-         */
-        get: operations["get_api_graph_cluster_cluster_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/graph/entities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Entity Graph
-         * @description Get entity relationship graph.
-         *
-         *     Builds a graph of entities (IPs, hosts, users, domains) and their relationships
-         *     based on findings.
-         *
-         *     Args:
-         *         finding_ids: Comma-separated list of finding IDs
-         *         case_id: Case ID to get entities from
-         *         cluster_id: Cluster ID to get entities from
-         *         limit: Maximum number of findings to process
-         *
-         *     Returns:
-         *         Graph data with nodes and links
-         */
-        get: operations["get_api_graph_entities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/graph/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Graph Summary
-         * @description Get summary statistics about the entity graph.
-         *
-         *     Args:
-         *         limit: Maximum number of findings to analyze
-         *
-         *     Returns:
-         *         Summary statistics
-         */
-        get: operations["get_api_graph_summary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/graph/technique/{technique_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Technique Graph
-         * @description Get graph of entities involved in a specific MITRE ATT&CK technique.
-         *
-         *     Args:
-         *         technique_id: MITRE ATT&CK technique ID (e.g., T1071.001)
-         *         limit: Maximum number of findings to process
-         *
-         *     Returns:
-         *         Graph data for the technique
-         */
-        get: operations["get_api_graph_technique_technique_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -4354,55 +4106,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ingest/s3-status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get S3 Status
-         * @description Get S3 connection status.
-         *
-         *     Returns:
-         *         S3 configuration and connection status
-         */
-        get: operations["get_api_ingest_s3-status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ingest/sync-s3": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sync From S3
-         * @description Sync findings and cases from AWS S3.
-         *
-         *     Requires S3 to be configured in settings.
-         *     Fetches data from the configured S3 bucket and syncs to local storage.
-         *
-         *     Returns:
-         *         Sync status and statistics
-         */
-        post: operations["post_api_ingest_sync-s3"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ingest/sync-s3-folder": {
         parameters: {
             query?: never;
@@ -4453,131 +4156,6 @@ export interface paths {
          * @description Accept a file and ingest it as a background job; poll /ingest/jobs/{id}.
          */
         post: operations["post_api_ingest_upload"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/integrations/compatibility/install": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Install Package
-         * @description Install or upgrade the pinned package for a known integration.
-         *
-         *     The request body is ``{"integration_id": "..."}`` — the server
-         *     looks up the package name and minimum version in its own
-         *     integration registry. There is no way for the client to specify
-         *     a package name, URL, or version directly.
-         */
-        post: operations["post_api_integrations_compatibility_install"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/integrations/compatibility/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Compatibility Status
-         * @description Get compatibility status for all integrations.
-         */
-        get: operations["get_api_integrations_compatibility_status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/integrations/compatibility/status/{integration_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Integration Compatibility
-         * @description Get compatibility status for a specific integration.
-         */
-        get: operations["get_api_integrations_compatibility_status_integration_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/integrations/compatibility/system": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get System Info
-         * @description Get system information including Python version.
-         */
-        get: operations["get_api_integrations_compatibility_system"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/integrations/compatibility/uninstall": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Uninstall Package
-         * @description Uninstall the package backing a known integration.
-         */
-        post: operations["post_api_integrations_compatibility_uninstall"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/integrations/compatibility/upgrade": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upgrade Package
-         * @description Upgrade an integration's pinned package.
-         */
-        post: operations["post_api_integrations_compatibility_upgrade"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6653,42 +6231,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/timeline/event/{event_id}/visualization": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Event Visualization
-         * @description Get comprehensive visualization data for a timeline event.
-         *
-         *     This endpoint provides all data needed for incident visualization:
-         *     - Event details and metadata
-         *     - Associated finding (if applicable)
-         *     - Related events in time window
-         *     - Entity relationship graph
-         *     - MITRE ATT&CK techniques
-         *     - AI-generated incident analysis
-         *
-         *     Args:
-         *         event_id: Event identifier (format: {type}-{id})
-         *         time_window_minutes: Minutes before/after to include related events
-         *         include_ai_analysis: Whether to generate AI analysis (requires Claude API)
-         *
-         *     Returns:
-         *         Comprehensive event visualization data
-         */
-        get: operations["get_api_timeline_event_event_id_visualization"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/timeline/finding/{finding_id}/context": {
         parameters: {
             query?: never;
@@ -7726,11 +7268,6 @@ export interface components {
             /** Format */
             format?: string | null;
         };
-        /** Body_upload_file_api_claude_upload_file_post */
-        Body_upload_file_api_claude_upload_file_post: {
-            /** File */
-            file: string;
-        };
         /**
          * BootstrapRequest
          * @description First-admin details.
@@ -8423,29 +7960,12 @@ export interface components {
             role: string;
         };
         /**
-         * ChatReportRequest
-         * @description Request model for generating a chat report.
-         */
-        ChatReportRequest: {
-            /** Messages */
-            messages: components["schemas"]["ChatMessage"][];
-            /** Notes */
-            notes?: string | null;
-            /** Tab Title */
-            tab_title: string;
-        };
-        /**
          * ChatRequest
          * @description Chat request model.
          */
         ChatRequest: {
             /** Agent Id */
             agent_id?: string | null;
-            /**
-             * Enable Thinking
-             * @default false
-             */
-            enable_thinking: boolean;
             /**
              * Max Tokens
              * @default 4096
@@ -8459,18 +7979,8 @@ export interface components {
             parent_run_id?: string | null;
             /** Session Id */
             session_id?: string | null;
-            /**
-             * Streaming
-             * @default false
-             */
-            streaming: boolean;
             /** System Prompt */
             system_prompt?: string | null;
-            /**
-             * Thinking Budget
-             * @default 10000
-             */
-            thinking_budget: number;
         };
         /** CheckpointRaised */
         CheckpointRaised: {
@@ -9135,56 +8645,6 @@ export interface components {
             /** Token */
             token: string;
         };
-        /**
-         * GraphData
-         * @description Graph data model.
-         */
-        GraphData: {
-            /** Links */
-            links: components["schemas"]["GraphLink"][];
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            } | null;
-            /** Nodes */
-            nodes: components["schemas"]["GraphNode"][];
-        };
-        /**
-         * GraphLink
-         * @description Graph link model.
-         */
-        GraphLink: {
-            /** Label */
-            label?: string | null;
-            /** Source */
-            source: string;
-            /** Target */
-            target: string;
-            /** Techniques */
-            techniques?: string[] | null;
-            /** Value */
-            value?: number | null;
-        };
-        /**
-         * GraphNode
-         * @description Graph node model.
-         */
-        GraphNode: {
-            /** Findingcount */
-            findingCount?: number | null;
-            /** Id */
-            id: string;
-            /** Label */
-            label: string;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            } | null;
-            /** Severity */
-            severity?: string | null;
-            /** Type */
-            type: string;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -9295,14 +8755,6 @@ export interface components {
             message: string;
             /** Success */
             success: boolean;
-        };
-        /**
-         * IntegrationActionRequest
-         * @description Request body for install/upgrade/uninstall of a known integration.
-         */
-        IntegrationActionRequest: {
-            /** Integration Id */
-            integration_id: string;
         };
         /**
          * IntegrationsConfig
@@ -9466,6 +8918,23 @@ export interface components {
             session_timeout_ms: number;
             /** Topics */
             topics?: string[];
+        };
+        /**
+         * KeyVerdict
+         * @description Whether one Bifrost key can route, and how the console should badge it.
+         */
+        KeyVerdict: {
+            /** Description */
+            description?: string | null;
+            /**
+             * Health
+             * @enum {string}
+             */
+            health: "healthy" | "unverified" | "unverifiable" | "rejected" | "disabled";
+            /** Provider */
+            provider: string;
+            /** Routable */
+            routable: boolean;
         };
         /** LLMProviderCreate */
         LLMProviderCreate: {
@@ -9951,6 +9420,22 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /**
+         * Routability
+         * @description Declared rather than a bare dict so the generated client carries the
+         *     shape: hand-maintaining it in TypeScript is the drift this route's own
+         *     verdict exists to end.
+         */
+        Routability: {
+            /** Keys */
+            keys: {
+                [key: string]: components["schemas"]["KeyVerdict"];
+            };
+            /** Providers */
+            providers: {
+                [key: string]: boolean;
+            };
+        };
         /** RunStatusResponse */
         RunStatusResponse: {
             /**
@@ -9992,16 +9477,6 @@ export interface components {
             aws_profile: string;
             /** Bucket Name */
             bucket_name: string;
-            /**
-             * Cases Path
-             * @default cases.json
-             */
-            cases_path: string;
-            /**
-             * Findings Path
-             * @default findings.json
-             */
-            findings_path: string;
             /**
              * Parquet Prefix
              * @default
@@ -10107,7 +9582,7 @@ export interface components {
          *
          *     Mandatory JSON body — does not accept query-string fallback. The
          *     previous shape took the same fields as raw path/query args and was
-         *     abused to overwrite ``mempalace/mempalace/mcp_server.py``.
+         *     abused to overwrite a runtime module outside the integrations directory.
          */
         SaveIntegrationRequest: {
             /** Integration Id */
@@ -10461,16 +9936,6 @@ export interface components {
              * @description Estimated time saved by AI
              */
             time_saved_minutes?: number | null;
-        };
-        /**
-         * SummarizeRequest
-         * @description Request to summarize a conversation.
-         */
-        SummarizeRequest: {
-            /** Messages */
-            messages: components["schemas"]["ChatMessage"][];
-            /** Model */
-            model?: string | null;
         };
         /**
          * TaskAdd
@@ -13165,6 +12630,37 @@ export interface operations {
             };
         };
     };
+    get_api_bifrost_routability: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Routability"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_api_bifrost_path: {
         parameters: {
             query?: never;
@@ -15529,40 +15025,6 @@ export interface operations {
             };
         };
     };
-    "post_api_claude_analyze-finding": {
-        parameters: {
-            query: {
-                finding_id: string;
-                context?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     post_api_claude_chat_stream: {
         parameters: {
             query?: never;
@@ -15598,41 +15060,6 @@ export interface operations {
             };
         };
     };
-    "post_api_claude_generate-chat-report": {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChatReportRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_api_claude_models: {
         parameters: {
             query?: never;
@@ -15643,76 +15070,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_api_claude_summarize: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SummarizeRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    "post_api_claude_upload-file": {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_file_api_claude_upload_file_post"];
-            };
-        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -16267,37 +15624,6 @@ export interface operations {
             path: {
                 integration_id: string;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_config_mempalace_health: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -17712,7 +17038,6 @@ export interface operations {
                 limit?: number;
                 sort_by?: string;
                 sort_order?: string;
-                force_refresh?: boolean;
             };
             header?: {
                 authorization?: string | null;
@@ -17977,181 +17302,6 @@ export interface operations {
             };
         };
     };
-    "get_api_graph_attack-path_case_id": {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                case_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphData"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_graph_cluster_cluster_id: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                cluster_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphData"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_graph_entities: {
-        parameters: {
-            query?: {
-                /** @description Comma-separated finding IDs */
-                finding_ids?: string | null;
-                /** @description Case ID */
-                case_id?: string | null;
-                /** @description Cluster ID */
-                cluster_id?: string | null;
-                limit?: number;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphData"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_graph_summary: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_graph_technique_technique_id: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                technique_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphData"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_api_health: {
         parameters: {
             query?: never;
@@ -18403,68 +17553,6 @@ export interface operations {
             };
         };
     };
-    "get_api_ingest_s3-status": {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    "post_api_ingest_sync-s3": {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     "post_api_ingest_sync-s3-folder": {
         parameters: {
             query?: {
@@ -18520,206 +17608,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestionJobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_api_integrations_compatibility_install: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationActionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_integrations_compatibility_status: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_integrations_compatibility_status_integration_id: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                integration_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_integrations_compatibility_system: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_api_integrations_compatibility_uninstall: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationActionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_api_integrations_compatibility_upgrade: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationActionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -22298,42 +21186,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimelineResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_api_timeline_event_event_id_visualization: {
-        parameters: {
-            query?: {
-                time_window_minutes?: number;
-                include_ai_analysis?: boolean;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

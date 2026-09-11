@@ -20,7 +20,6 @@ import api, {
   type FederationSourceView,
   type IngestionJob,
   type LLMProvider,
-  type MempalaceHealth,
   type PlatformDatabaseProxyConfig,
 } from '../../services/api'
 import { loadCustomIntegrations } from '../../config/integrations'
@@ -82,34 +81,6 @@ export function useGeneralSettings() {
   )
 
   return { config, setConfig, phase, error, reload, save }
-}
-
-export function useMempalaceHealth() {
-  const [health, setHealth] = useState<MempalaceHealth | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [reloadKey, setReloadKey] = useState(0)
-  const reload = useCallback(() => setReloadKey((k) => k + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    configApi
-      .getMempalaceHealth()
-      .then((res) => {
-        if (!cancelled) setHealth(res.data)
-      })
-      .catch(() => {
-        if (!cancelled) setHealth(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
-
-  return { health, loading, reload }
 }
 
 export type ProxyType = 'none' | 'pgbouncer' | 'ssh_tunnel'
@@ -976,8 +947,6 @@ export interface S3Config {
   access_key_id: string
   secret_access_key: string
   session_token: string
-  findings_path: string
-  cases_path: string
   parquet_prefix: string
   configured: boolean
 }
@@ -990,8 +959,6 @@ const S3_DEFAULTS: S3Config = {
   access_key_id: '',
   secret_access_key: '',
   session_token: '',
-  findings_path: 'findings.json',
-  cases_path: 'cases.json',
   parquet_prefix: '',
   configured: false,
 }

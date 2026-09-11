@@ -93,15 +93,10 @@ PROTECTED_ROUTES = [
         },
     ),
     ("GET", "/api/mcp/servers/enabled", None),
-    ("PUT", "/api/mcp/servers/mempalace/enabled", {"enabled": False}),
+    ("PUT", "/api/mcp/servers/deeptempo-findings/enabled", {"enabled": False}),
     ("GET", "/api/orchestrator/status", None),
     ("POST", "/api/orchestrator/investigations/purge", None),
     ("GET", "/api/approvals/pending", None),
-    (
-        "POST",
-        "/api/integrations/compatibility/install",
-        {"integration_id": "misp"},
-    ),
     ("GET", "/api/claude/models", None),
     (
         "POST",
@@ -111,7 +106,6 @@ PROTECTED_ROUTES = [
             "max_tokens": 1,
         },
     ),
-    ("POST", "/api/claude/analyze-finding?finding_id=auth-gate-test", None),
     ("GET", "/api/webhooks/", None),
     (
         "POST",
@@ -204,25 +198,6 @@ def test_internal_route_says_so_when_no_secret_is_configured(
     assert app.request(method, path, json=body).status_code == 503
 
 
-def test_unauthenticated_claude_upload_file_is_rejected(app):
-    """The Claude file upload helper must not read files before auth."""
-    response = app.post(
-        "/api/claude/upload-file",
-        files={
-            "file": (
-                "auth-test.txt",
-                b"synthetic auth gate test\n",
-                "text/plain",
-            )
-        },
-    )
-
-    assert response.status_code in (401, 403), (
-        f"POST /api/claude/upload-file returned {response.status_code} "
-        f"(body: {response.text[:200]})"
-    )
-
-
 def test_vstrike_inbound_without_bearer_uses_api_key_gate(app):
     """VStrike /findings stays public from session auth but not open."""
     response = app.post(
@@ -241,11 +216,6 @@ def test_vstrike_inbound_without_bearer_uses_api_key_gate(app):
 ADMIN_ONLY_ROUTES = [
     (
         "POST",
-        "/api/integrations/compatibility/install",
-        {"integration_id": "misp"},
-    ),
-    (
-        "POST",
         "/api/custom-integrations/save",
         {
             "integration_id": "smoke",
@@ -254,7 +224,7 @@ ADMIN_ONLY_ROUTES = [
         },
     ),
     ("GET", "/api/custom-integrations/list", None),
-    ("PUT", "/api/mcp/servers/mempalace/enabled", {"enabled": False}),
+    ("PUT", "/api/mcp/servers/deeptempo-findings/enabled", {"enabled": False}),
     ("POST", "/api/mcp/servers/reload", None),
     (
         "POST",

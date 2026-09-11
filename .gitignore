@@ -209,7 +209,9 @@ config.json
 # config.db is its config store and holds provider API keys -- in plaintext
 # unless the deployment turned on Bifrost's key encryption; logs.db carries
 # request and response bodies. Neither is ever committed.
-bifrost/
+# Anchored: unanchored, this also swallowed core/llm/bifrost/ and
+# infra/docker/bifrost/, so a new file in either was ignored on sight.
+/bifrost/
 /logs.db
 
 # Node.js / React
@@ -293,10 +295,13 @@ index.scip.stamp
 /logs.db
 /bifrost/
 
-# Working copies of two dropped submodules, which survive a checkout. Neither has a
+# Working copies of dropped submodules, which survive a checkout. None has a
 # production importer here -- mcp-servers' four servers are vendored at tools/mcp/.
+# Palace *data* never lived here: it is under the state directory, and is the
+# operator's to remove.
 /deeptempo-core/
 /mcp-servers/
+/mempalace/
 
 # Local scratch space -- notes and throwaway files, never committed.
 /.scratch/
