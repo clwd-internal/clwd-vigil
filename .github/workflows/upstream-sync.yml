@@ -2,8 +2,21 @@
 #
 # This is a fork of Vigil-SOC/vigil. The longer we go without merging upstream,
 # the more expensive each merge becomes — so this runs weekly, merges
-# upstream/main into the long-lived `upstream-sync` branch, and opens a PR into
-# develop when there is anything to bring over.
+# upstream/main into a throwaway `upstream-sync` branch re-seeded from develop,
+# and opens a PR into develop when there is anything to bring over.
+#
+# `upstream-sync` is a STAGING branch, not a long-lived one. It is re-created
+# from origin/develop on every run. This is load-bearing: the first version of
+# this workflow reused whatever `upstream-sync` already pointed at, and on its
+# first real run that was a tip 35 commits behind develop. It computed "14
+# commits behind upstream" against that stale tip — while develop was in fact
+# fully up to date with upstream — and produced a merge that would have
+# reverted every one of those 35 commits (multi-tenancy, SSO, Defender and
+# Sentinel work: 5063 deletions) as a clean, non-draft, auto-labelled PR.
+#
+# Re-seeding costs nothing, because sync PRs are merged (never squashed) into
+# develop. develop therefore already contains the previous sync's merge commit,
+# so git retains full knowledge of which upstream commits have been applied.
 #
 # It deliberately does NOT auto-merge. Every conflict in this repo is a
 # decision (see docs/UPSTREAM.md "Files this fork modifies"), not something a
@@ -25,6 +38,9 @@ env:
   UPSTREAM_REPO: Vigil-SOC/vigil
   UPSTREAM_BRANCH: main
   SYNC_BRANCH: upstream-sync
+  # The integration branch sync PRs target, and the branch the staging branch
+  # is re-seeded from. See docs/UPSTREAM.md for why this is develop, not main.
+  BASE_BRANCH: develop
 
 permissions:
   contents: write
@@ -61,15 +77,11 @@ jobs:
       - name: Decide whether there is anything to sync
         id: check
         run: |
-          # Establish the sync branch on first run: branch it from our develop so
-          # the first merge is fork-history-vs-upstream-history exactly once.
-          if git show-ref --verify --quiet "refs/remotes/origin/${SYNC_BRANCH}"; then
-            git switch -c "${SYNC_BRANCH}" "origin/${SYNC_BRANCH}"
-          else
-            echo "::notice::creating ${SYNC_BRANCH} from origin/develop (first run)"
-            git switch -c "${SYNC_BRANCH}" origin/develop
-            git push origin "${SYNC_BRANCH}"
-          fi
+          # Always re-seed from the integration branch. Never reuse whatever
+          # ${SYNC_BRANCH} happens to point at -- see the header comment: a
+          # stale tip makes "behind" meaningless and turns the sync into a
+          # revert of everything develop has gained since.
+          git switch -c "${SYNC_BRANCH}" "origin/${BASE_BRANCH}"
 
           behind=$(git rev-list --count "HEAD..upstream/${UPSTREAM_BRANCH}")
           echo "behind=${behind}" >> "$GITHUB_OUTPUT"
@@ -106,6 +118,15 @@ jobs:
             fi
             git commit -m "chore(upstream): CONFLICTED merge of ${UPSTREAM_REPO}@${{ steps.check.outputs.upstream_sha }}"
           fi
+          # Invariant: a sync ADDS upstream work on top of ours, it never drops
+          # ours. If develop is not an ancestor of the merge result, the merge
+          # is proposing to revert our own commits -- refuse to push it. This is
+          # the check that would have caught the stale-branch bug.
+          if ! git merge-base --is-ancestor "origin/${BASE_BRANCH}" HEAD; then
+            echo "::error::refusing to continue: origin/${BASE_BRANCH} is not an ancestor of the merge result, so this sync would revert commits already on ${BASE_BRANCH}"
+            exit 1
+          fi
+
           echo "conflicts<<EOF" >> "$GITHUB_OUTPUT"
           git diff --name-only --diff-filter=U HEAD~1 HEAD 2>/dev/null | head -50 >> "$GITHUB_OUTPUT" || true
           echo "EOF" >> "$GITHUB_OUTPUT"
@@ -117,8 +138,10 @@ jobs:
             branch="${SYNC_BRANCH}/conflicted-$(date -u +%Y%m%d)-${{ steps.check.outputs.upstream_sha }}"
             git push --force-with-lease origin "HEAD:refs/heads/${branch}"
           else
-            # Fast-forward-only on the long-lived branch: never force-push it.
-            git push origin "${SYNC_BRANCH}"
+            # The staging branch is re-seeded every run, so force-pushing it is
+            # expected. The history it carries is preserved by merging (never
+            # squashing) the sync PR into ${BASE_BRANCH}.
+            git push --force-with-lease origin "HEAD:refs/heads/${SYNC_BRANCH}"
             branch="${SYNC_BRANCH}"
           fi
           echo "PR_HEAD=${branch}" >> "$GITHUB_ENV"
@@ -166,17 +189,37 @@ jobs:
           \`\`\`"
           fi
 
-          existing=$(gh pr list --head "${PR_HEAD}" --base develop --state open --json number --jq '.[0].number')
+          existing=$(gh pr list --head "${PR_HEAD}" --base "${BASE_BRANCH}" --state open --json number --jq '.[0].number')
           if [ -n "${existing}" ]; then
             gh pr edit "${existing}" --title "${title}" --body "${body}"
             echo "::notice::updated PR #${existing}"
-          else
-            draft_flag=""
-            [ "$conflicted" = "true" ] && draft_flag="--draft"
-            # shellcheck disable=SC2086
-            gh pr create --base develop --head "${PR_HEAD}" \
-              --title "${title}" --body "${body}" ${draft_flag} \
-              --label "upstream-sync" || \
-            gh pr create --base develop --head "${PR_HEAD}" \
-              --title "${title}" --body "${body}" ${draft_flag}
+            exit 0
           fi
+
+          draft_flag=""
+          [ "$conflicted" = "true" ] && draft_flag="--draft"
+          # shellcheck disable=SC2086
+          if gh pr create --base "${BASE_BRANCH}" --head "${PR_HEAD}" \
+               --title "${title}" --body "${body}" ${draft_flag} \
+               --label "upstream-sync" 2>/tmp/pr_err ||
+             gh pr create --base "${BASE_BRANCH}" --head "${PR_HEAD}" \
+               --title "${title}" --body "${body}" ${draft_flag} 2>>/tmp/pr_err; then
+            exit 0
+          fi
+
+          # The clwd-internal org policy "Allow GitHub Actions to create and
+          # approve pull requests" is currently disabled, so GITHUB_TOKEN cannot
+          # open a PR. The merge itself already succeeded and is pushed, which is
+          # the expensive part -- so surface a one-click link instead of failing
+          # the run and making the sync look broken.
+          cat /tmp/pr_err || true
+          echo "::warning::could not open the PR automatically (org policy blocks GITHUB_TOKEN from creating pull requests). The merge is pushed to '${PR_HEAD}'; open it by hand:"
+          echo "::warning::https://github.com/${GITHUB_REPOSITORY}/compare/${BASE_BRANCH}...${PR_HEAD}?expand=1"
+          {
+            echo "### Upstream sync needs a PR opened by hand"
+            echo
+            echo "The merge succeeded and is pushed to \`${PR_HEAD}\`, but this org"
+            echo "does not allow GitHub Actions to create pull requests."
+            echo
+            echo "[Open the sync PR](https://github.com/${GITHUB_REPOSITORY}/compare/${BASE_BRANCH}...${PR_HEAD}?expand=1)"
+          } >> "$GITHUB_STEP_SUMMARY"
